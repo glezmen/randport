@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAy2KEPqokTlkhz0d7IcXkpp8rzkAduhco&callback=initMap" async defer></script>
+		<title>Random Airport Selector</title>
+		<style>
+
+		#map {
+			height: 500px;
+			width: 100%;
+		}
+
+		body {
+			font-family: Arial, sans-serif;
+			margin: 20px;
+			line-height: 1.6;
+			background-color: #f9f9f9;
+			color: #333;
+		}
+
+		h1 {
+			color: #0056b3;
+		}
+
+		label {
+			display: block;
+			margin-bottom: 10px;
+		}
+
+		select, input[type="checkbox"] {
+			margin-right: 10px;
+		}
+
+		button {
+			background-color: #0056b3;
+			color: white;
+			border: none;
+			padding: 10px 20px;
+			border-radius: 5px;
+			cursor: pointer;
+		}
+
+		button:hover {
+			background-color: #003d82;
+		}
+
+		#result {
+			margin-top: 20px;
+			padding: 10px;
+			border: 1px solid #ccc;
+			background-color: #fff;
+			border-radius: 5px;
+			width: fit-content;
+		}
+
+		.highlight {
+			font-weight: bold;
+			color: #0056b3;
+		}
+		</style>
+
+		<script>
+			let data = [];
+
+			async function loadCSV() {
+				document.getElementById("result").innerHTML = "<strong>Loading...</strong>";
+				const response = await fetch('https://davidmegginson.github.io/ourairports-data/airports.csv');
+				const csvText = await response.text();
+
+				data = csvText.split('\n').slice(1).map(row => {
+					const [id, ident, type, name, latitude_deg, longitude_deg, elevation_ft, continent, iso_country, iso_region, municipality, scheduled_service, gps_code, iata_code, local_code, home_link, wikipedia_link, keywords] = row.split(',').map(field => field.replace(/^"|"$/g, ''));
+					return { id, ident, type, name, latitude_deg, longitude_deg, iata_code, local_code, continent, iso_country, iso_region, home_link, wikipedia_link };
+				}).filter(row => row.id); // Filter out empty rows
+
+				populateFilters();
+				document.getElementById("result").innerHTML = "<strong>Ready</strong>";
+			}
+
+			function filterAndSelect() {
+				const iataFilter = document.getElementById("iataFilter").checked;
+				const balloonFilter = document.getElementById("balloonFilter").checked;
+				const heliportFilter = document.getElementById("heliportFilter").checked;
+				const openFilter = document.getElementById("openFilter").checked;
+				const seaplaneFilter = document.getElementById("seaplaneFilter").checked;
+				const minSize = document.getElementById("minSize").value;
+				const countryFilter = document.getElementById("countryFilter").value;
+				const continentFilter = document.getElementById("continentFilter").value;
+
+				let filteredData = data;
+
+				if (iataFilter) {
+					filteredData = filteredData.filter(row => row.iata_code !== "");
+				}
+
+				if (!balloonFilter) {
+					filteredData = filteredData.filter(row => row.type !== "balloonport");
+				}
+
+				if (!heliportFilter) {
+					filteredData = filteredData.filter(row => row.type !== "heliport");
+				}
+
+				if (openFilter) {
+					filteredData = filteredData.filter(row => row.type !== "closed");
+				}
+
+				if (seaplaneFilter) {
+					filteredData = filteredData.filter(row => row.type === "seaplane_base");
+				}
+
+				if (minSize === "Large") {
+					filteredData = filteredData.filter(row => row.type === "large_airport");
+				} else if (minSize === "Medium") {
+					filteredData = filteredData.filter(row => row.type === "large_airport" || row.type === "medium_airport");
+				}
+
+				if (countryFilter) {
+					filteredData = filteredData.filter(row => row.iso_country === countryFilter);
+				}
+
+				if (continentFilter) {
+					filteredData = filteredData.filter(row => row.continent === continentFilter);
+				}
+
+				if (filteredData.length > 0) {
+					const randomRow = filteredData[Math.floor(Math.random() * filteredData.length)];
+					document.getElementById("result").innerHTML = `<strong>Selected:</strong> <br>
+					<span class="highlight">Name:</span> ${randomRow.name || "N/A"} <br>
+					<span class="highlight">Type:</span> ${randomRow.type || "N/A"} <br>
+					<span class="highlight">IATA:</span> ${randomRow.iata_code || "N/A"} <br>
+					<span class="highlight">Local Code:</span> ${randomRow.local_code || "N/A"} <br>
+					<span class="highlight">Ident:</span> ${randomRow.ident || "N/A"} <br>
+					<span class="highlight">Continent:</span> ${randomRow.continent || "N/A"} <br>
+					<span class="highlight">Country:</span> ${randomRow.iso_country || "N/A"} <br>
+					<span class="highlight">Region:</span> ${randomRow.iso_region || "N/A"} <br>
+					<span class="highlight">Home Page:</span> ${randomRow.home_link ? `<a href="${randomRow.home_link}" target="_blank">${randomRow.home_link}</a>` : "-"} <br>
+					<span class="highlight">Wikipedia:</span> ${randomRow.wikipedia_link ? `<a href="${randomRow.wikipedia_link}" target="_blank">${randomRow.wikipedia_link}</a>` : "-"}`;
+
+					initMap(randomRow.latitude_deg, randomRow.longitude_deg);
+				} else {
+					document.getElementById("result").innerText = "No rows match the filters.";
+				}
+			}
+
+			async function initMap(p_lat, p_lon) {
+				p_lat = parseFloat(p_lat);
+				p_lon = parseFloat(p_lon);
+
+				if (isNaN(p_lat) || isNaN(p_lon)) {
+					console.error("Invalid latitude or longitude values:", p_lat, p_lon);
+					return;
+				}
+
+				var location = { lat: p_lat, lng: p_lon };
+				var map = new google.maps.Map(document.getElementById('map'), {
+					zoom: 10,
+					center: location
+				});
+				var marker = new google.maps.Marker({
+					position: location,
+					map: map
+				});
+			}
+
+			function populateFilters() {
+				const countrySet = Array.from(new Set(data.map(row => row.iso_country).filter(Boolean))).sort();
+				const continentSet = Array.from(new Set(data.map(row => row.continent).filter(continent => /^[^0-9]+$/.test(continent)))).sort();
+
+				const countryFilter = document.getElementById("countryFilter");
+				const continentFilter = document.getElementById("continentFilter");
+
+				countryFilter.innerHTML = '<option value="">Any</option>';
+				continentFilter.innerHTML = '<option value="">Any</option>';
+
+				countrySet.forEach(country => {
+					const option = document.createElement("option");
+					option.value = country;
+					option.textContent = country;
+					countryFilter.appendChild(option);
+				});
+
+				continentSet.forEach(continent => {
+					const option = document.createElement("option");
+					option.value = continent;
+					option.textContent = continent;
+					continentFilter.appendChild(option);
+				});
+			}
+
+			window.onload = loadCSV;
+		</script>
+	</head>
+	<body>
+		<h1>Random Airport Selector</h1>
+
+		<table border=0 cellpadding=10>
+		<tr valign=top><td>
+
+		<label>
+			<input type="checkbox" id="iataFilter"> Only with IATA
+		</label>
+
+		<label>
+			<input type="checkbox" id="balloonFilter"> Enable balloonports
+		</label>
+
+		<label>
+			<input type="checkbox" id="heliportFilter"> Enable heliports
+		</label>
+
+		<label>
+			<input type="checkbox" id="openFilter"> Only open airports
+		</label>
+
+		<label>
+			<input type="checkbox" id="seaplaneFilter"> Only seaplane bases
+		</label>
+
+		<label for="minSize">Minimum size:
+		<select id="minSize">
+			<option value="All">All</option>
+			<option value="Medium">Medium</option>
+			<option value="Large">Large</option>
+		</select></label>
+
+		<label for="countryFilter">Country:
+		<select id="countryFilter">
+			<option value="">Any</option>
+		</select></label>
+
+		<label for="continentFilter">Continent:
+		<select id="continentFilter">
+			<option value="">Any</option>
+		</select></label>
+
+		<button onclick="filterAndSelect()">Select Random Airport</button>
+
+		</td><td>
+
+		<div id="result">Result will be displayed here.</div>
+
+		</td></tr></table>
+
+		<div id="map"></div>
+
+	</body>
+</html>
+
