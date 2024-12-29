@@ -67,7 +67,9 @@
 			let data = [];
 			let countries = {};
 			let filteredData = [];
-			let lastcoord = { lat: 0, lon: 0 };
+			let map = null;
+			let stepCounter = 0;
+			let coords = {};
 
 			async function loadCountries() {
 				const response = await fetch('https://davidmegginson.github.io/ourairports-data/countries.csv');
@@ -207,32 +209,38 @@
 
 				document.getElementById("result").innerHTML = createResult(randomRow);
 
-				lastcoord = {
-					lat: randomRow.latitude_deg,
-					lon: randomRow.longitude_deg
-				};
-				console.log("Selected: ", lastcoord);
+				coords = [{
+					id: randomRow.id,
+					lat: parseFloat(randomRow.latitude_deg),
+					lng: parseFloat(randomRow.longitude_deg)
+				}];
 
-				initMap(randomRow.latitude_deg, randomRow.longitude_deg);
+				stepCounter = 0;
+				initMap(randomRow);
+				addMarker(randomRow, '1');
 			}
 
-			async function initMap(p_lat, p_lon) {
-				p_lat = parseFloat(p_lat);
-				p_lon = parseFloat(p_lon);
-
-				if (isNaN(p_lat) || isNaN(p_lon)) {
-					console.error("Invalid latitude or longitude values:", p_lat, p_lon);
-					return;
-				}
+			async function initMap(row) {
+				p_lat = parseFloat(row.latitude_deg);
+				p_lon = parseFloat(row.longitude_deg);
 
 				var location = { lat: p_lat, lng: p_lon };
-				var map = new google.maps.Map(document.getElementById('map'), {
+				map = new google.maps.Map(document.getElementById('map'), {
 					zoom: 10,
 					center: location
 				});
+			}
+
+			function addMarker(row, label) {
+				p_lat = parseFloat(row.latitude_deg);
+				p_lon = parseFloat(row.longitude_deg);
+				var location = { lat: p_lat, lng: p_lon };
+				console.log("Add marker: ", location);
 				var marker = new google.maps.Marker({
 					position: location,
-					map: map
+					map: map,
+					title: row.name,
+					label: label
 				});
 			}
 
@@ -298,21 +306,57 @@
 				let dist = 0;
 				let unit = document.getElementById("unit_km").checked ? "km" : "nm";
 				let count = 0;
+				const repeat = document.getElementById("repeat").checked;
+
+				filter();
 
 				do {
 					randomRow = selectRandom();
-					dist = calcDistance(randomRow.latitude_deg, randomRow.longitude_deg, lastcoord.lat, lastcoord.lon);
+					dist = calcDistance(randomRow.latitude_deg, randomRow.longitude_deg, coords[coords.length - 1].lat, coords[coords.length - 1].lng);
 
 					if (dist < min || dist > max) {
 						console.log(`Attempt #${++count}, distance: ${dist}`);
 					}
+
+					if (repeat === false) {
+						coords.forEach(coord => {
+							if (coord.id === randomRow.id) {
+								console.log("Would repeat, skipping");
+								dist = -1;
+							}
+						})
+					}
+
+					if (count > 2 * filteredData.length) {
+						console.log("Too many attempts, likely we will never find a valid point");
+						return;
+					}
 				} while (dist < min || dist > max);
 				dist = Math.round(dist);
 
-				lastcoord = {
-					lat: randomRow.latitude_deg,
-					lon: randomRow.longitude_deg
-				};
+				addMarker(randomRow, '' + (1 + ++stepCounter));
+
+				coords.push({
+					id: randomRow.id,
+					lat: parseFloat(randomRow.latitude_deg),
+					lng: parseFloat(randomRow.longitude_deg)
+				})
+
+				const bounds = new google.maps.LatLngBounds();
+				coords.forEach(coord => {
+					bounds.extend(coord);
+				});
+				map.fitBounds(bounds);
+
+				const lines = new google.maps.Polyline({
+					path: coords,
+					geodesic: true,
+					strokeColor: '#FF0000',
+					strokeOpacity: 1.0,
+					strokeWeight: 2
+				});
+
+				lines.setMap(map);
 
 				var newstep = createResult(randomRow, false);
 				var trow = document.getElementById("trow");
@@ -333,7 +377,7 @@
 		<table border=0 cellpadding=10>
 		<tr id="trow" valign=top><td>
 
-		<label> <input type="checkbox" id="iataFilter"> Only with IATA </label>
+		<label> <input type="checkbox" id="iataFilter" checked="checked"> Only with IATA </label>
 
 		<label> <input type="checkbox" id="balloonFilter"> Enable balloonports </label>
 
@@ -381,6 +425,8 @@
 				<label> <input type="radio" id="unit_km" name="unit" value="km" checked="checked"/> km </label>
 				<label> <input type="radio" id="unit_nm" name="unit" value="nm"/> nm </label>
 			</p>
+
+			<p><label><input type="checkbox" id="repeat"> Enable repeats </label></p>
 
 			<p>
 				<label>Min: <input type="number" id="minDistance" min=0 max=10000 value=50></label>
