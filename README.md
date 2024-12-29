@@ -1,6 +1,7 @@
 # Randport
 
-Select random airport anywhere in the world
+- Select random airport anywhere in the world with customizable filters.
+- Create flight routes according to selected distance
 
 # Data source
 

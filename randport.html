@@ -7,62 +7,64 @@
 		<title>Random Airport Selector</title>
 		<style>
 
-		#map {
-			height: 500px;
-			width: 100%;
-		}
+			#map {
+				height: 500px;
+				width: 100%;
+			}
 
-		body {
-			font-family: Arial, sans-serif;
-			margin: 20px;
-			line-height: 1.6;
-			background-color: #f9f9f9;
-			color: #333;
-		}
+			body {
+				font-family: Arial, sans-serif;
+				margin: 20px;
+				line-height: 1.6;
+				background-color: #f9f9f9;
+				color: #333;
+			}
 
-		h1 {
-			color: #0056b3;
-		}
+			h1 {
+				color: #0056b3;
+			}
 
-		label {
-			display: block;
-			margin-bottom: 10px;
-		}
+			label {
+				display: block;
+				margin-bottom: 10px;
+			}
 
-		select, input[type="checkbox"] {
-			margin-right: 10px;
-		}
+			select, input[type="checkbox"] {
+				margin-right: 10px;
+			}
 
-		button {
-			background-color: #0056b3;
-			color: white;
-			border: none;
-			padding: 10px 20px;
-			border-radius: 5px;
-			cursor: pointer;
-		}
+			button {
+				background-color: #0056b3;
+				color: white;
+				border: none;
+				padding: 10px 20px;
+				border-radius: 5px;
+				cursor: pointer;
+			}
 
-		button:hover {
-			background-color: #003d82;
-		}
+			button:hover {
+				background-color: #003d82;
+			}
 
-		#result {
-			margin-top: 20px;
-			padding: 10px;
-			border: 1px solid #ccc;
-			background-color: #fff;
-			border-radius: 5px;
-			width: fit-content;
-		}
+			#result {
+				margin-top: 20px;
+				padding: 10px;
+				border: 1px solid #ccc;
+				background-color: #fff;
+				border-radius: 5px;
+				width: fit-content;
+			}
 
-		.highlight {
-			font-weight: bold;
-			color: #0056b3;
-		}
+			.highlight {
+				font-weight: bold;
+				color: #0056b3;
+			}
 		</style>
 
 		<script>
 			let data = [];
+			let filteredData = [];
+			let lastcoord = { lat: 0, lon: 0 };
 
 			async function loadCSV() {
 				document.getElementById("result").innerHTML = "<strong>Loading...</strong>";
@@ -78,7 +80,19 @@
 				document.getElementById("result").innerHTML = "<strong>Ready</strong>";
 			}
 
-			function filterAndSelect() {
+			function clearFilter() {
+				document.getElementById("iataFilter").checked = false;
+				document.getElementById("balloonFilter").checked = false;
+				document.getElementById("heliportFilter").checked = false;
+				document.getElementById("openFilter").checked = false;
+				document.getElementById("seaplaneFilter").checked = false;
+				document.getElementById("minSize").value = "All";
+				document.getElementById("countryFilter").value = "";
+				document.getElementById("continentFilter").value = "";
+				filter();
+			}
+
+			function filter() {
 				const iataFilter = document.getElementById("iataFilter").checked;
 				const balloonFilter = document.getElementById("balloonFilter").checked;
 				const heliportFilter = document.getElementById("heliportFilter").checked;
@@ -88,7 +102,7 @@
 				const countryFilter = document.getElementById("countryFilter").value;
 				const continentFilter = document.getElementById("continentFilter").value;
 
-				let filteredData = data;
+				filteredData = data;
 
 				if (iataFilter) {
 					filteredData = filteredData.filter(row => row.iata_code !== "");
@@ -124,24 +138,48 @@
 					filteredData = filteredData.filter(row => row.continent === continentFilter);
 				}
 
-				if (filteredData.length > 0) {
-					const randomRow = filteredData[Math.floor(Math.random() * filteredData.length)];
-					document.getElementById("result").innerHTML = `<strong>Selected:</strong> <br>
-					<span class="highlight">Name:</span> ${randomRow.name || "N/A"} <br>
-					<span class="highlight">Type:</span> ${randomRow.type || "N/A"} <br>
-					<span class="highlight">IATA:</span> ${randomRow.iata_code || "N/A"} <br>
-					<span class="highlight">Local Code:</span> ${randomRow.local_code || "N/A"} <br>
-					<span class="highlight">Ident:</span> ${randomRow.ident || "N/A"} <br>
-					<span class="highlight">Continent:</span> ${randomRow.continent || "N/A"} <br>
-					<span class="highlight">Country:</span> ${randomRow.iso_country || "N/A"} <br>
-					<span class="highlight">Region:</span> ${randomRow.iso_region || "N/A"} <br>
-					<span class="highlight">Home Page:</span> ${randomRow.home_link ? `<a href="${randomRow.home_link}" target="_blank">${randomRow.home_link}</a>` : "-"} <br>
-					<span class="highlight">Wikipedia:</span> ${randomRow.wikipedia_link ? `<a href="${randomRow.wikipedia_link}" target="_blank">${randomRow.wikipedia_link}</a>` : "-"}`;
+				document.getElementById("rowcount").innerText = `${filteredData.length} airports matching`;
 
-					initMap(randomRow.latitude_deg, randomRow.longitude_deg);
-				} else {
+				if (filteredData.length < 1) {
 					document.getElementById("result").innerText = "No rows match the filters.";
+					console.error("Filtering failed: No rows match the filters.");
 				}
+			}
+
+			function selectRandom() {
+				return filteredData[Math.floor(Math.random() * filteredData.length)];
+			}
+
+			function createResult(airport, verbose = true) {
+				let result = `<span class="highlight">Name:</span> ${airport.name || "N/A"} <br>
+				<span class="highlight">Type:</span> ${airport.type || "N/A"} <br>
+				<span class="highlight">IATA:</span> ${airport.iata_code || "N/A"} <br>
+				<span class="highlight">Local Code:</span> ${airport.local_code || "N/A"} <br>
+				<span class="highlight">Ident:</span> ${airport.ident || "N/A"} <br>
+				<span class="highlight">Continent:</span> ${airport.continent || "N/A"} <br>
+				<span class="highlight">Country:</span> ${airport.iso_country || "N/A"} <br>
+				<span class="highlight">Region:</span> ${airport.iso_region || "N/A"} <br>`;
+				if (verbose) {
+					result += `<span class="highlight">Home Page:</span> ${airport.home_link ? `<a href="${airport.home_link}" target="_blank">${airport.home_link}</a>` : "-"} <br>
+					<span class="highlight">Wikipedia:</span> ${airport.wikipedia_link ? `<a href="${airport.wikipedia_link}" target="_blank">${airport.wikipedia_link}</a>` : "-"}`;
+				}
+				return result;
+			}
+
+			function filterAndSelect() {
+				filter();
+
+				const randomRow = selectRandom();
+
+				document.getElementById("result").innerHTML = createResult(randomRow);
+
+				lastcoord = {
+					lat: randomRow.latitude_deg,
+					lon: randomRow.longitude_deg
+				};
+				console.log("Selected: ", lastcoord);
+
+				initMap(randomRow.latitude_deg, randomRow.longitude_deg);
 			}
 
 			async function initMap(p_lat, p_lon) {
@@ -162,6 +200,36 @@
 					position: location,
 					map: map
 				});
+			}
+
+			function toRadians(degrees) {
+				return degrees * Math.PI / 180;
+			}
+
+			function calcDistance(lat1, lon1, lat2, lon2) {
+				const R = 6371; // Earth radius
+
+				const lat1Rad = toRadians(lat1);
+				const lon1Rad = toRadians(lon1);
+				const lat2Rad = toRadians(lat2);
+				const lon2Rad = toRadians(lon2);
+
+				const dLat = lat2Rad - lat1Rad;
+				const dLon = lon2Rad - lon1Rad;
+
+				// Haversine formula
+				const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+					Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+					Math.sin(dLon / 2) * Math.sin(dLon / 2);
+				const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+				let distance = R * c; // km
+
+				if (document.getElementById("unit_nm").checked) {
+					distance = distance * 0.539956803;
+				}
+
+				return distance;
 			}
 
 			function populateFilters() {
@@ -189,6 +257,33 @@
 				});
 			}
 
+			function addStep() {
+				const min = document.getElementById("minDistance").value;
+				const max = document.getElementById("maxDistance").value;
+				let randomRow = null;
+				let dist = 0;
+				let unit = document.getElementById("unit_km").checked ? "km" : "nm";
+
+				do {
+					console.log("Filtered data size: ", filteredData.length);
+					randomRow = selectRandom();
+					dist = calcDistance(randomRow.latitude_deg, randomRow.longitude_deg, lastcoord.lat, lastcoord.lon);
+
+					if (dist < min || dist > max) {
+						console.log("Retrying, distance: ", dist);
+					}
+				} while (dist < min || dist > max);
+				dist = Math.round(dist);
+
+				var newstep = createResult(randomRow, false);
+				var trow = document.getElementById("trow");
+				const content = document.createElement("div");
+				content.innerHTML = `<td> &rarr; ${dist} ${unit} <hr/> ${newstep}</td>`;
+				const cell = document.createElement("td");
+				cell.appendChild(content);
+				trow.appendChild(cell);
+			}
+
 			window.onload = loadCSV;
 		</script>
 	</head>
@@ -196,27 +291,17 @@
 		<h1>Random Airport Selector</h1>
 
 		<table border=0 cellpadding=10>
-		<tr valign=top><td>
+		<tr id="trow" valign=top><td>
 
-		<label>
-			<input type="checkbox" id="iataFilter"> Only with IATA
-		</label>
+		<label> <input type="checkbox" id="iataFilter"> Only with IATA </label>
 
-		<label>
-			<input type="checkbox" id="balloonFilter"> Enable balloonports
-		</label>
+		<label> <input type="checkbox" id="balloonFilter"> Enable balloonports </label>
 
-		<label>
-			<input type="checkbox" id="heliportFilter"> Enable heliports
-		</label>
+		<label> <input type="checkbox" id="heliportFilter"> Enable heliports </label>
 
-		<label>
-			<input type="checkbox" id="openFilter"> Only open airports
-		</label>
+		<label> <input type="checkbox" id="openFilter"> Only open airports </label>
 
-		<label>
-			<input type="checkbox" id="seaplaneFilter"> Only seaplane bases
-		</label>
+		<label> <input type="checkbox" id="seaplaneFilter"> Only seaplane bases </label>
 
 		<label for="minSize">Minimum size:
 		<select id="minSize">
@@ -236,14 +321,40 @@
 		</select></label>
 
 		<button onclick="filterAndSelect()">Select Random Airport</button>
+		<p>
+		<button onclick="filter()">Filter</button>
+		<button onclick="clearFilter()">Clear filters</button>
+
+		<p><div id="rowcount"></div>
 
 		</td><td>
 
 		<div id="result">Result will be displayed here.</div>
 
-		</td></tr></table>
+		</td>
+
+		<td style="border: 1px solid black;">
+			<h3><u>Route</u></h3>
+			<p>Distance:</p>
+			<p>
+				<label> <input type="radio" id="unit_km" name="unit" value="km" checked="checked"/> km </label>
+				<label> <input type="radio" id="unit_nm" name="unit" value="nm"/> nm </label>
+			</p>
+
+			<p>
+				<label>Min: <input type="number" id="minDistance" min=0 max=10000 value=50></label>
+				<label>Max: <input type="number" id="maxDistance" min=50 max=20000 value=500></label>
+			</p>
+
+			<p><button onclick="addStep()">Add step</button><p>
+		</td>
+
+
+		</tr></table>
 
 		<div id="map"></div>
+
+		<p><small>Data source: <a href="https://davidmegginson.github.io/ourairports-data">https://davidmegginson.github.io/ourairports-data</a></small></p>
 
 	</body>
 </html>
