@@ -72,6 +72,15 @@
 			let stepCounter = 0;
 			let coords = {};
 
+			function getTimeAt(lat, lon) {
+				const time = new Date();
+				const offsetHours = Math.round(lon / 15); // 15° ~ 1 hr timezone
+				const localTime = new Date(time.getTime() + offsetHours * 60 * 60 * 1000);
+				const hours = localTime.getUTCHours().toString().padStart(2, '0');
+				const minutes = localTime.getUTCMinutes().toString().padStart(2, '0');
+				return `${hours}:${minutes} ${hours < 12 ? "AM" : ""}`;
+			}
+
 			async function loadCountries() {
 				const response = await fetch('https://davidmegginson.github.io/ourairports-data/countries.csv');
 				const csvText = await response.text();
@@ -114,6 +123,7 @@
 					name: row.name,
 					latitude_deg: row.latitude_deg,
 					longitude_deg: row.longitude_deg,
+					elevation_ft: row.elevation_ft,
 					gps_code: row.gps_code,
 					iata_code: row.iata_code,
 					local_code: row.local_code,
@@ -215,11 +225,13 @@
 				<span class="highlight">GPS Code:</span> ${airport.gps_code || "N/A"} <br>
 				<span class="highlight">Local Code:</span> ${airport.local_code || "N/A"} <br>
 				<span class="highlight">Ident:</span> ${airport.ident || "N/A"} <br>
+				<span class="highlight">Elevation:</span> ${airport.elevation_ft || "N/A"} <br>
 				<span class="highlight">Frequency:</span> ${frequencies[airport.id].freq + " MHz (" + frequencies[airport.id].type + ")" || "N/A"} <br>
 				<span class="highlight">Country:</span> ${countries[airport.iso_country] || "N/A"} <br>
 				<span class="highlight">Region:</span> ${airport.iso_region || "N/A"} <br>`;
 				if (verbose) {
 					result += `
+					<span class="highlight">Local time:</span> ${getTimeAt(airport.latitude_deg, airport.longitude_deg)} <br>
 					<span class="highlight">Continent:</span> ${airport.continent || "N/A"} <br>
 					<span class="highlight">Home Page:</span> ${airport.home_link ? `<a href="${airport.home_link}" target="_blank">${airport.home_link}</a>` : "-"} <br>
 					<span class="highlight">Wikipedia:</span> ${airport.wikipedia_link ? `<a href="${airport.wikipedia_link}" target="_blank">LINK</a>` : "-"}`;
