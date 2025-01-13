@@ -143,7 +143,6 @@
 				document.getElementById("iataFilter").checked = false;
 				document.getElementById("daylightFilter").checked = false;
 				document.getElementById("radioFilter").checked = false;
-				document.getElementById("balloonFilter").checked = false;
 				document.getElementById("heliportFilter").checked = false;
 				document.getElementById("openFilter").checked = false;
 				document.getElementById("seaplaneFilter").checked = false;
@@ -156,7 +155,6 @@
 			function filter() {
 				const iataFilter = document.getElementById("iataFilter").checked;
 				const radioFilter = document.getElementById("radioFilter").checked;
-				const balloonFilter = document.getElementById("balloonFilter").checked;
 				const heliportFilter = document.getElementById("heliportFilter").checked;
 				const openFilter = document.getElementById("openFilter").checked;
 				const seaplaneFilter = document.getElementById("seaplaneFilter").checked;
@@ -174,9 +172,7 @@
 					filteredData = filteredData.filter(row => frequencies[row.id] !== undefined);
 				}
 
-				if (!balloonFilter) {
-					filteredData = filteredData.filter(row => row.type !== "balloonport");
-				}
+				filteredData = filteredData.filter(row => row.type !== "balloonport");
 
 				if (!heliportFilter) {
 					filteredData = filteredData.filter(row => row.type !== "heliport");
@@ -434,7 +430,6 @@
 		<label> <input type="checkbox" onchange="filter()" id="radioFilter" checked="checked"> Only with radio COM </label>
 		<label> <input type="checkbox" onchange="filter()" id="iataFilter"> Only with IATA </label>
 		<label> <input type="checkbox" onchange="filter()" id="daylightFilter"> Daylight only </label>
-		<label> <input type="checkbox" onchange="filter()" id="balloonFilter"> Enable balloonports </label>
 		<label> <input type="checkbox" onchange="filter()" id="heliportFilter"> Enable heliports </label>
 		<label> <input type="checkbox" onchange="filter()" id="openFilter"> Only open airports </label>
 		<label> <input type="checkbox" onchange="filter()" id="seaplaneFilter"> Only seaplane bases </label>
